@@ -156,18 +156,13 @@ void CheckObstacles() {
   long distance_right = GetDistanceOfPingSensor(triggerPinRight, echoPinRight);
   
   if (distance_left <= MIN_DIST && distance_left >= 10) {
-    //if (distance_left < distance_right) {
+    if (distance_right <= MIN_DIST && distance_right >= 10) {
       MoveLeft();
-      bluetooth.print("Left ");
-      bluetooth.print(distance_left);
-      bluetooth.println();
-    /*}
-    else {
-      MoveLeft();
-      bluetooth.print("Right ");
-      bluetooth.print(distance_right);
-      bluetooth.println();
-    }*/
+    } else {
+      MoveRight();
+    }
+  } else if (distance_right <= MIN_DIST && distance_right >= 10) {
+    MoveLeft();
   } else {
     MoveForward();
   }

@@ -1,14 +1,30 @@
 #include <SoftwareSerial.h>
 
 // Constants
-const double MIN_DIST = 0.5;
-const double MAX_VEL = 1.0;
+const double MIN_DIST = 100;
+const double MAX_VEL = 200;
 
 // Ping sensors pins
-const int triggerPinLeft = 11;
-const int echoPinLeft = 12;
-const int triggerPinRight = 13;
-const int echoPinRight = 14;
+const int triggerPinLeft = 8;
+const int echoPinLeft = 9;
+const int triggerPinRight = 6;
+const int echoPinRight = 7;
+
+// Wheel pins
+const int dir1PinA = 4;
+const int dir2PinA = 5;
+const int speedPinA = 10;
+
+const int dir1PinB = 2;
+const int dir2PinB = 3;
+const int speedPinB = 11;
+
+// Bluetooth pins
+const int rxPin = 13;
+const int txPin = 12;
+
+// Bluetooth
+SoftwareSerial bluetooth(rxPin, txPin);
 
 // Robot state
 enum RobotState {
@@ -21,39 +37,33 @@ RobotState state = Idling;
 // Wheel speed/direction
 int leftWheelDir1 = LOW;
 int leftWheelDir2 = LOW;
-double leftWheelSpeed = 0;
+double leftWheelSpeed = MAX_VEL;
 
 int rightWheelDir1 = LOW;
 int rightWheelDir2 = LOW;
-double rightWheelSpeed = 0.0;
-
-// Bluetooth
-SoftwareSerial bluetooth(10, 11);
-
-// Wheel pins
-const int dir1PinA = 2;
-const int dir2PinA = 3;
-const int speedPinA = 9;
-
-const int dir1PinB = 4;
-const int dir2PinB = 5;
-const int speedPinB = 10;
+double rightWheelSpeed = MAX_VEL;
 
 void setup() {
   // Define output for direction pins
   pinMode(dir1PinA, OUTPUT);
   pinMode(dir2PinA, OUTPUT);
   pinMode(speedPinA, OUTPUT);
-  
+  analogWrite(speedPinA, leftWheelSpeed);
+
   pinMode(dir1PinB, OUTPUT);
   pinMode(dir2PinB, OUTPUT);
   pinMode(speedPinB, OUTPUT);
+  analogWrite(speedPinB, rightWheelSpeed);
   
   // Define I/O for left and right ping sensors
   pinMode(triggerPinLeft, OUTPUT);
   pinMode(echoPinLeft, INPUT);
   pinMode(triggerPinRight, OUTPUT);
   pinMode(echoPinRight, INPUT);
+
+  // Open bluetooth pins
+  pinMode(rxPin, INPUT);
+  pinMode(txPin, OUTPUT);
   
   // Set the data rate for SoftwareSerial port
   bluetooth.begin(9600);
@@ -62,7 +72,7 @@ void setup() {
   bluetooth.println("Robot Car Started.");
 }
 
-
+int var = 1;
 void loop() {
   readInput();
 
@@ -84,12 +94,14 @@ void loop() {
 
 
 void readInput() {
-  if (bluetooth.available()) {
+  if (bluetooth.available() > 0) {
     char cmd = bluetooth.read();
-    
+
     switch (cmd) {
       case '0':
         state = RobotState::Idling;
+        Stop();
+        MoveRobot();
         bluetooth.println("Robot car is idling.");
         break;
       case '1':
@@ -98,9 +110,10 @@ void readInput() {
         break;
       case '2':
         state = RobotState::Manual;
+        bluetooth.println("Robot car is manually moving");
         break;
       case 'w':
-        if (state = RobotState::Manual) {
+        if (state == RobotState::Manual) {
           MoveForward();
         }
         else {
@@ -108,7 +121,7 @@ void readInput() {
         }
         break;
       case 's':
-        if (state = RobotState::Manual) {
+        if (state == RobotState::Manual) {
           MoveBackward();
         }
         else {
@@ -116,7 +129,7 @@ void readInput() {
         }
         break;
       case 'a':
-        if (state = RobotState::Manual) {
+        if (state == RobotState::Manual) {
           MoveLeft();
         }
         else {
@@ -124,7 +137,7 @@ void readInput() {
         }
         break;
       case 'd':
-        if (state = RobotState::Manual) {
+        if (state == RobotState::Manual) {
           MoveRight();
         }
         else {
@@ -142,13 +155,19 @@ void CheckObstacles() {
   long distance_left = GetDistanceOfPingSensor(triggerPinLeft, echoPinLeft);
   long distance_right = GetDistanceOfPingSensor(triggerPinRight, echoPinRight);
   
-  if (distance_left <= MIN_DIST || distance_right <= MIN_DIST) {
-    if (distance_left < distance_right) {
-      MoveRight();
-    }
+  if (distance_left <= MIN_DIST && distance_left >= 10) {
+    //if (distance_left < distance_right) {
+      MoveLeft();
+      bluetooth.print("Left ");
+      bluetooth.print(distance_left);
+      bluetooth.println();
+    /*}
     else {
       MoveLeft();
-    }
+      bluetooth.print("Right ");
+      bluetooth.print(distance_right);
+      bluetooth.println();
+    }*/
   } else {
     MoveForward();
   }
@@ -169,58 +188,58 @@ long GetDistanceOfPingSensor(int trigger, int echo)
   long duration = pulseIn(echo, HIGH);
 
   // Convert time into distance
-  return ((duration / 2.0) / (29.1)) / (100);
+  return (duration / 2.0) / 29.1;
 }
 
 void MoveForward() {
   leftWheelDir1 = LOW;
   leftWheelDir2 = HIGH;
-  leftWheelSpeed = MAX_VEL;
 
   rightWheelDir1 = LOW;
   rightWheelDir2 = HIGH;
-  rightWheelSpeed = MAX_VEL;
 }
 
 void MoveRight() {
   leftWheelDir1 = LOW;
   leftWheelDir2 = HIGH;
-  leftWheelSpeed = MAX_VEL;
 
   rightWheelDir1 = LOW;
   rightWheelDir2 = LOW;
-  rightWheelSpeed = 0;
 }
 
 void MoveLeft() {
   leftWheelDir1 = LOW;
   leftWheelDir2 = LOW;
-  leftWheelSpeed = 0;
 
   rightWheelDir1 = LOW;
   rightWheelDir2 = HIGH;
-  rightWheelSpeed = MAX_VEL;
 }
 
 void MoveBackward() {
   leftWheelDir1 = HIGH;
   leftWheelDir2 = LOW;
-  leftWheelSpeed = MAX_VEL;
 
   rightWheelDir1 = HIGH;
   rightWheelDir2 = LOW;
-  rightWheelSpeed = MAX_VEL;
+}
+
+void Stop() {
+  leftWheelDir1 = LOW;
+  leftWheelDir2 = LOW;
+
+  rightWheelDir1 = LOW;
+  rightWheelDir2 = LOW;
 }
 
 void MoveRobot() {
   // Send movement to robot's wheels
   digitalWrite(dir1PinA, leftWheelDir1);
   digitalWrite(dir2PinA, leftWheelDir2);
-  analogWrite(speedPinA, leftWheelSpeed);
+
+  delay(100);
 
   digitalWrite(dir1PinB, rightWheelDir1);
   digitalWrite(dir2PinB, rightWheelDir2);
-  analogWrite(speedPinB, rightWheelSpeed);
 }
 
 

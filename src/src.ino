@@ -1,7 +1,7 @@
 #include <SoftwareSerial.h>
 
 // Constants
-const double MIN_DIST = 100;
+const double MIN_DIST = 50;
 const double MAX_VEL = 200;
 
 // Ping sensors pins
@@ -33,6 +33,16 @@ enum RobotState {
   Manual
 };
 RobotState state = Idling;
+
+// Robot direction
+enum Direction {
+  None,
+  Forward,
+  Right,
+  Backward,
+  Left
+};
+Direction dir = Direction::None;
 
 // Wheel speed/direction
 int leftWheelDir1 = LOW;
@@ -187,35 +197,76 @@ long GetDistanceOfPingSensor(int trigger, int echo)
 }
 
 void MoveForward() {
+  if (dir == Direction::Forward) {
+    return;
+  }
+  
+  bluetooth.println("Forward");
   leftWheelDir1 = LOW;
   leftWheelDir2 = HIGH;
 
   rightWheelDir1 = LOW;
   rightWheelDir2 = HIGH;
+
+  MoveRobot();
+
+  dir = Direction::Forward;
 }
 
 void MoveRight() {
+  if (dir == Direction::Right) {
+    return;
+  }
+  
+  bluetooth.println("Right");
   leftWheelDir1 = LOW;
   leftWheelDir2 = HIGH;
 
   rightWheelDir1 = LOW;
   rightWheelDir2 = LOW;
+
+  MoveRobot();
+
+  dir = Direction::Right;
+
+  delay(1000);
+  MoveForward();
 }
 
 void MoveLeft() {
+  if (dir == Direction::Left) {
+    return;
+  }
+  
+  bluetooth.println("Left");
   leftWheelDir1 = LOW;
   leftWheelDir2 = LOW;
 
   rightWheelDir1 = LOW;
   rightWheelDir2 = HIGH;
+
+  MoveRobot();
+
+  dir = Direction::Left;
+
+  delay(1000);
+  MoveForward();
 }
 
 void MoveBackward() {
+  if (dir == Direction::Backward) {
+    return;
+  }
+  
   leftWheelDir1 = HIGH;
   leftWheelDir2 = LOW;
 
   rightWheelDir1 = HIGH;
   rightWheelDir2 = LOW;
+
+  MoveRobot();
+
+  dir = Direction::Backward;
 }
 
 void Stop() {
@@ -224,9 +275,13 @@ void Stop() {
 
   rightWheelDir1 = LOW;
   rightWheelDir2 = LOW;
+
+  dir = Direction::None;
 }
 
 void MoveRobot() {
+  delay(100);
+  
   // Send movement to robot's wheels
   digitalWrite(dir1PinA, leftWheelDir1);
   digitalWrite(dir2PinA, leftWheelDir2);
